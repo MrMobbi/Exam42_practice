@@ -25,6 +25,7 @@ void exit_error(char *str)
     exit(1);
 }
 
+// function client chain list
 t_client *new_client(int fd)
 {
     t_client    *new;
@@ -32,8 +33,8 @@ t_client *new_client(int fd)
     if (!new)
         exit_error("Malloc client error\n");
     new->fd = fd;
-    d_id_client++;
     new->id = d_id_client;
+    d_id_client++;
     new->next = NULL;
     return (new);
 }
@@ -62,7 +63,7 @@ t_client *close_client(t_client *client, int id)
         {
             printf("CLIENT1 :[%p] | [%d]\n", client, client->id);
             start = client->next;
-           // close(client->fd);
+            close(client->fd);
             free(client);
             client = NULL;
             break;
@@ -72,7 +73,7 @@ t_client *close_client(t_client *client, int id)
             printf("CLIENT2 :[%p] | [%d]\n", client, client->id);
             t_client *tmp = client->next;
             client->next = client->next->next;
-           // close(tmp->fd);
+            close(tmp->fd);
             free(tmp);
             tmp = NULL;
             break ;
@@ -84,29 +85,7 @@ t_client *close_client(t_client *client, int id)
     return (start);
 }
 
-void close_all_client(t_client *client)
-{
-    t_client    *tmp;
-
-    while (client != NULL)
-    {
-        tmp = client;
-        client = client->next;
-        //close(tmp->fd);
-        free(tmp);
-        tmp = NULL;
-    }
-}
-
-void print_client(t_client *client)
-{
-    while (client != NULL)
-    {
-        printf("[%d] | [%d]\n ", client->fd, client->id);
-        client = client->next;
-    }
-}
-
+// function to find the id of tu curent client in the server
 int find_id(t_client *client, int fd)
 {
     while (client != NULL)
@@ -118,11 +97,13 @@ int find_id(t_client *client, int fd)
     return (0);
 }
 
-void send_message(t_client *client, char *buffer)
+// function that send the message to all other client
+void send_message(t_client *client, char *buffer, int fd)
 {
     while (client != NULL)
     {
-        send(client->fd, buffer, strlen(buffer), 0);
+        if (client->fd != fd)
+            send(client->fd, buffer, strlen(buffer), 0);
         client = client->next;
     }
 }
@@ -179,7 +160,7 @@ int main(int ac, char **av)
                 else
                     add_client(client, client_socket);
                 sprintf(buffer, "server: client %d just arrived\n", find_id(client, client_socket));
-                send_message(client, buffer);
+                send_message(client, buffer, client_socket);
             }
             else
             { 
@@ -189,7 +170,7 @@ int main(int ac, char **av)
                 {
                     bzero(msg_buffer, d_buffer_size);
                     sprintf(msg_buffer, "server: client %d just left\n", find_id(client, socket_id));
-                    send_message(client, msg_buffer);
+                    send_message(client, msg_buffer, socket_id);
                     close_client(client, socket_id);
                     FD_CLR(socket_id, &active_socket);
                 } 
@@ -197,7 +178,7 @@ int main(int ac, char **av)
                 {
                     bzero(msg_buffer, d_buffer_size);
                     sprintf(msg_buffer, "client %d: %s\n", find_id(client, socket_id), buffer);
-                    send_message(client, msg_buffer);
+                    send_message(client, msg_buffer, socket_id);
                 }
             }
         }
