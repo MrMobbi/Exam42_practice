@@ -61,7 +61,6 @@ t_client *close_client(t_client *client, int id)
     {
         if (client->id == id)
         {
-            printf("CLIENT1 :[%p] | [%d]\n", client, client->id);
             start = client->next;
             close(client->fd);
             free(client);
@@ -70,7 +69,6 @@ t_client *close_client(t_client *client, int id)
         }
         else if (client->next != NULL && client->next->id == id)
         {
-            printf("CLIENT2 :[%p] | [%d]\n", client, client->id);
             t_client *tmp = client->next;
             client->next = client->next->next;
             close(tmp->fd);
@@ -81,7 +79,6 @@ t_client *close_client(t_client *client, int id)
         else
             client = client->next;
     }
-    printf("START :[%p] | [%d]\n", start, start->id);
     return (start);
 }
 
