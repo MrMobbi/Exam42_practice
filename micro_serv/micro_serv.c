@@ -54,12 +54,12 @@ void add_client(t_client *client, int fd)
     }
 }
 
-t_client *close_client(t_client *client, int id)
+t_client *close_client(t_client *client, int fd)
 {
     t_client *start = client;
     while (client != NULL)
     {
-        if (client->id == id)
+        if (client->fd == fd)
         {
             start = client->next;
             close(client->fd);
@@ -67,7 +67,7 @@ t_client *close_client(t_client *client, int id)
             client = NULL;
             break;
         }
-        else if (client->next != NULL && client->next->id == id)
+        else if (client->next != NULL && client->next->fd == fd)
         {
             t_client *tmp = client->next;
             client->next = client->next->next;
@@ -97,11 +97,13 @@ int find_id(t_client *client, int fd)
 // function that send the message to all other client
 void send_message(t_client *client, char *buffer, int fd)
 {
-    while (client != NULL)
+    t_client *tmp = client;
+    
+    while (tmp != NULL)
     {
-        if (client->fd != fd)
-            send(client->fd, buffer, strlen(buffer), 0);
-        client = client->next;
+        if (tmp->fd != fd)
+            send(tmp->fd, buffer, strlen(buffer), 0);
+        tmp = tmp->next;
     }
 }
 
@@ -151,6 +153,7 @@ int main(int ac, char **av)
 
                 if ((client_socket = accept(server_socket, NULL, NULL)) < 0)
                     exit_error("Problem client socket\n");
+                FD_SET(client_socket, &active_socket);
                 max_socket = (client_socket > max_socket) ? client_socket : max_socket;
                 if (client == NULL)
                     client = new_client(client_socket);
@@ -174,13 +177,11 @@ int main(int ac, char **av)
                 else 
                 {
                     bzero(msg_buffer, d_buffer_size);
-                    sprintf(msg_buffer, "client %d: %s\n", find_id(client, socket_id), buffer);
+                    sprintf(msg_buffer, "client %d: %s", find_id(client, socket_id), buffer);
                     send_message(client, msg_buffer, socket_id);
                 }
             }
         }
     }
-
-    printf("open\n");
     return (0);
 }
