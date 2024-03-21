@@ -16,7 +16,7 @@ typedef struct s_client {
 // all the define variable needed
 int         d_id_client = 0;
 const int   d_max_client = 128;
-const int   d_buffer_size = 200000;
+const int   d_buffer_size = 424242;
 
 // Function for handle error
 void exit_error(char *str)
@@ -133,8 +133,10 @@ int main(int ac, char **av)
     FD_ZERO(&active_socket);
     FD_SET(server_socket, &active_socket);
     int max_socket = server_socket;
-    char buffer[d_buffer_size];
-    char msg_buffer[d_buffer_size];
+    char *buffer = calloc(sizeof(char), d_buffer_size + 1);
+    if (!buffer)
+        exit_error("buffer error\n");
+    char *msg_buffer;
     t_client *client = NULL;
 
     while (1)
@@ -142,11 +144,11 @@ int main(int ac, char **av)
         ready_socket = active_socket;
         if (select(max_socket + 1, &ready_socket, NULL, NULL, NULL) < 0)
             exit_error("Problem select");
+        bzero(buffer, d_buffer_size);
         for (int socket_id = 0; socket_id <= max_socket; socket_id++)
         {
             if (!FD_ISSET(socket_id, &ready_socket))
                 continue;
-            bzero(buffer, d_buffer_size);
             if (socket_id == server_socket)
             {
                 int client_socket;
@@ -164,21 +166,36 @@ int main(int ac, char **av)
             }
             else
             { 
-                int bytes_read = recv(socket_id, buffer, sizeof(buffer) - 1, 0);
+                int bytes_read = recv(socket_id, buffer, 4242424242, MSG_DONTWAIT);
 
+                printf("[%d]\n", bytes_read);
                 if (bytes_read <= 0) 
                 {
-                    bzero(msg_buffer, d_buffer_size);
-                    sprintf(msg_buffer, "server: client %d just left\n", find_id(client, socket_id));
-                    send_message(client, msg_buffer, socket_id);
-                    close_client(client, socket_id);
+                    bzero(buffer, d_buffer_size);
+                    sprintf(buffer, "server: client %d just left\n", find_id(client, socket_id));
+                    send_message(client, buffer, socket_id);
+                    client = close_client(client, socket_id);
                     FD_CLR(socket_id, &active_socket);
                 } 
                 else 
                 {
-                    bzero(msg_buffer, d_buffer_size);
-                    sprintf(msg_buffer, "client %d: %s", find_id(client, socket_id), buffer);
-                    send_message(client, msg_buffer, socket_id);
+                    msg_buffer = calloc(sizeof(char), strlen(buffer) + 1);
+                    if (!msg_buffer)
+                        exit_error("MSG_BUFFER error\n");
+                    strcpy(msg_buffer, buffer);
+                    //printf("%s | [%c]\n", msg_buffer, msg_buffer[strlen(msg_buffer) - 1]);
+                    if (msg_buffer[strlen(msg_buffer) - 1] == 10)
+                    {
+                        char *full_msg = calloc(sizeof(char), strlen(msg_buffer) + 50);
+                        if (!full_msg)
+                            exit_error("full message error\n");
+                        sprintf(full_msg, "client %d: %s", find_id(client, socket_id), msg_buffer);
+                        send_message(client, full_msg, socket_id);
+                        bzero(msg_buffer, strlen(msg_buffer));
+                        bzero(full_msg, strlen(full_msg));
+                        free(msg_buffer);
+                        free(full_msg);
+                    }
                 }
             }
         }
